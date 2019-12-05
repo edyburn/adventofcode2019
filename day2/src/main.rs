@@ -1,18 +1,13 @@
 use std::fs;
 
-fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
-    let input = fs::read_to_string("input.txt")?;
-    let mut data: Vec<usize> = input
-        .trim_end()
-        .split(',')
-        .map(|i| i.parse::<usize>().unwrap())
-        .collect();
+#[allow(clippy::unreadable_literal)]
+const TARGET: usize = 19690720;
+
+fn run_program(mut data: Vec<usize>, noun: usize, verb: usize) -> bool {
     let mut cursor: usize = 0;
 
-    // before running the program, replace position 1 with the value 12 and
-    // replace position 2 with the value 2.
-    data[1] = 12;
-    data[2] = 2;
+    data[1] = noun;
+    data[2] = verb;
 
     loop {
         let opcode = data[cursor];
@@ -38,9 +33,31 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
             _ => panic!(format!("unknown opcode: {}", opcode)),
         }
     }
+    data[0] == TARGET
+}
 
-    // What value is left at position 0 after the program halts?
-    println!("result: {}", data[0]);
+fn try_values(data: Vec<usize>) -> (usize, usize) {
+    for noun in 0..=99 {
+        for verb in 0..=99 {
+            if run_program(data.clone(), noun, verb) {
+                return (noun, verb);
+            }
+        }
+    }
+    panic!("No solution!")
+}
+
+fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
+    let input = fs::read_to_string("input.txt")?;
+    let data: Vec<usize> = input
+        .trim_end()
+        .split(',')
+        .map(|i| i.parse::<usize>().unwrap())
+        .collect();
+
+    let (noun, verb) = try_values(data);
+
+    println!("result: {}", 100 * noun + verb);
 
     Ok(())
 }
