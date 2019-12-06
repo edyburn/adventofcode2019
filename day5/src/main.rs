@@ -52,6 +52,40 @@ fn run_program(mut memory: Vec<isize>, mut input: Vec<isize>) {
                 println!("output: {}", output_value);
                 cursor += 2;
             }
+            // jump-if-true
+            5 => {
+                let value = memory_lookup(&memory, cursor + 1, params & 1);
+                if value != 0 {
+                    cursor = memory_lookup(&memory, cursor + 2, (params / 10) & 1) as usize;
+                } else {
+                    cursor += 3;
+                }
+            }
+            // jump-if-false
+            6 => {
+                let value = memory_lookup(&memory, cursor + 1, params & 1);
+                if value == 0 {
+                    cursor = memory_lookup(&memory, cursor + 2, (params / 10) & 1) as usize;
+                } else {
+                    cursor += 3;
+                }
+            }
+            // less than
+            7 => {
+                let a = memory_lookup(&memory, cursor + 1, params & 1);
+                let b = memory_lookup(&memory, cursor + 2, (params / 10) & 1);
+                let result_pos = memory[cursor + 3] as usize;
+                memory[result_pos] = if a < b { 1 } else { 0 };
+                cursor += 4;
+            }
+            // equal
+            8 => {
+                let a = memory_lookup(&memory, cursor + 1, params & 1);
+                let b = memory_lookup(&memory, cursor + 2, (params / 10) & 1);
+                let result_pos = memory[cursor + 3] as usize;
+                memory[result_pos] = if a == b { 1 } else { 0 };
+                cursor += 4;
+            }
             // halt
             99 => break,
             _ => panic!(format!("unknown opcode: {}", opcode)),
@@ -67,6 +101,6 @@ fn main() -> Result<(), Box<dyn std::error::Error + 'static>> {
         .map(|i| i.parse::<isize>().unwrap())
         .collect();
 
-    run_program(data, vec![1]);
+    run_program(data, vec![5]);
     Ok(())
 }
