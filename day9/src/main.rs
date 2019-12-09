@@ -162,7 +162,7 @@ fn main() {
         .split(',')
         .map(|i| i.parse::<isize>().unwrap())
         .collect();
-    let mut program = Program::new(data, vec![1]);
+    let mut program = Program::new(data, vec![2]);
     loop {
         match program.execute_instruction() {
             InstructionResult::None => continue,
