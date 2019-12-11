@@ -1,5 +1,6 @@
 use intcode::{InstructionResult, Program};
 use std::collections::HashMap;
+use std::iter;
 
 type Position = (isize, isize);
 enum Orientation {
@@ -63,6 +64,8 @@ fn main() {
     let mut robot = Robot::new();
     // 0 -> black panel, 1 -> white panel
     let mut panels = HashMap::<Position, isize>::new();
+    // start on a white panel
+    panels.insert((0, 0), 1);
     let mut outputing_color = true;
     loop {
         match program.execute_instruction() {
@@ -87,6 +90,30 @@ fn main() {
             }
         }
     }
-    // number of panels it paints at least once
-    println!("result: {}", panels.len());
+    // determine grid size
+    let min_x = *panels.keys().map(|(x, _)| x).min().unwrap();
+    let max_x = *panels.keys().map(|(x, _)| x).max().unwrap();
+    let min_y = *panels.keys().map(|(_, y)| y).min().unwrap();
+    let max_y = *panels.keys().map(|(_, y)| y).max().unwrap();
+    // fill grid with 0s
+    let mut grid: Vec<Vec<_>> = (min_y..=max_y)
+        .map(|_| iter::repeat(0).take((max_x - min_x + 1) as usize).collect())
+        .collect();
+    // apply panel colors to grid
+    for ((x, y), color) in panels.iter() {
+        grid[(y - min_y) as usize][(x - min_x) as usize] = *color;
+    }
+    // what registration identifier does it paint (eight capital letters)
+    for row in grid.iter().rev() {
+        println!(
+            "{}",
+            row.iter()
+                .map(|i| match i {
+                    0 => ' ',
+                    1 => '▮',
+                    _ => panic!("unknown color in grid"),
+                })
+                .collect::<String>()
+        );
+    }
 }
