@@ -1,57 +1,67 @@
 use std::cmp::Ordering;
+use std::collections::HashMap;
 
-struct Moon {
-    position: (isize, isize, isize),
-    velocity: (isize, isize, isize),
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
+struct MoonAxis {
+    p: isize,
+    v: isize,
 }
 
-impl Moon {
+impl MoonAxis {
     fn apply_velocity(&mut self) {
-        self.position = add_triples(self.position, self.velocity);
+        self.p += self.v;
     }
 
-    fn get_total_energy(&self) -> isize {
-        // A moon's potential energy is the sum of the absolute values of its
-        // x, y, and z position coordinates.
-        let (x, y, z) = self.position;
-        let potential = x.abs() + y.abs() + z.abs();
-        // A moon's kinetic energy is the sum of the absolute values of its
-        // velocity coordinates.
-        let (vx, vy, vz) = self.velocity;
-        let kinetic = vx.abs() + vy.abs() + vz.abs();
-        // The total energy for a single moon is its potential energy
-        // multiplied by its kinetic energy.
-        potential * kinetic
-    }
-}
-
-fn add_triples(
-    (a1, a2, a3): (isize, isize, isize),
-    (b1, b2, b3): (isize, isize, isize),
-) -> (isize, isize, isize) {
-    (a1 + b1, a2 + b2, a3 + b3)
-}
-
-fn axis_velocity_delta(p1: isize, p2: isize) -> (isize, isize) {
-    match p1.cmp(&p2) {
-        Ordering::Equal => (0, 0),
-        Ordering::Less => (1, -1),
-        Ordering::Greater => (-1, 1),
+    fn apply_gravity(axis: &mut Vec<Self>, idx1: usize, idx2: usize) {
+        let m1 = &axis[idx1];
+        let m2 = &axis[idx2];
+        match m1.p.cmp(&m2.p) {
+            Ordering::Equal => (),
+            Ordering::Less => {
+                let m1 = axis.get_mut(idx1).unwrap();
+                m1.v += 1;
+                let m2 = axis.get_mut(idx2).unwrap();
+                m2.v -= 1;
+            }
+            Ordering::Greater => {
+                let m1 = axis.get_mut(idx1).unwrap();
+                m1.v -= 1;
+                let m2 = axis.get_mut(idx2).unwrap();
+                m2.v += 1;
+            }
+        }
     }
 }
 
-fn apply_gravity(moons: &mut [Moon], idx1: usize, idx2: usize) {
-    let moon1 = &moons[idx1];
-    let moon2 = &moons[idx2];
-    let (x1, y1, z1) = moon1.position;
-    let (x2, y2, z2) = moon2.position;
-    let (dvx1, dvx2) = axis_velocity_delta(x1, x2);
-    let (dvy1, dvy2) = axis_velocity_delta(y1, y2);
-    let (dvz1, dvz2) = axis_velocity_delta(z1, z2);
-    let moon1 = moons.get_mut(idx1).unwrap();
-    moon1.velocity = add_triples(moon1.velocity, (dvx1, dvy1, dvz1));
-    let moon2 = moons.get_mut(idx2).unwrap();
-    moon2.velocity = add_triples(moon2.velocity, (dvx2, dvy2, dvz2));
+fn process_axis(axis: &mut Vec<MoonAxis>, pairs: &[(usize, usize)]) -> u64 {
+    let mut steps: u64 = 0;
+    let mut seen = HashMap::new();
+    seen.insert(axis.clone(), 0);
+    loop {
+        steps += 1;
+        for (idx1, idx2) in pairs.iter() {
+            MoonAxis::apply_gravity(axis, *idx1, *idx2);
+        }
+        for moon in axis.iter_mut() {
+            moon.apply_velocity();
+        }
+        if let Some(last) = seen.get(axis) {
+            return steps - last;
+        }
+        seen.insert(axis.clone(), steps);
+    }
+}
+
+fn gcd(a: u64, b: u64) -> u64 {
+    if b == 0 {
+        a
+    } else {
+        gcd(b, a % b)
+    }
+}
+
+fn lcm(a: u64, b: u64) -> u64 {
+    a / gcd(a, b) * b
 }
 
 fn main() {
@@ -62,43 +72,59 @@ fn main() {
      *  <x=5, y=10, z=4>
      */
     // Since there are only 4 moons, I'm not going to bother with parsing...
-    let mut moons = vec![
-        Moon {
-            position: (3, 2, -6),
-            velocity: (0, 0, 0),
-        },
-        Moon {
-            position: (-13, 18, 10),
-            velocity: (0, 0, 0),
-        },
-        Moon {
-            position: (-8, -1, 13),
-            velocity: (0, 0, 0),
-        },
-        Moon {
-            position: (5, 10, 4),
-            velocity: (0, 0, 0),
-        },
+    let mut x_axis = vec![
+        MoonAxis { p: 3, v: 0 },
+        MoonAxis { p: -13, v: 0 },
+        MoonAxis { p: -8, v: 0 },
+        MoonAxis { p: 5, v: 0 },
     ];
-
+    let mut y_axis = vec![
+        MoonAxis { p: 2, v: 0 },
+        MoonAxis { p: 18, v: 0 },
+        MoonAxis { p: -1, v: 0 },
+        MoonAxis { p: 10, v: 0 },
+    ];
+    let mut z_axis = vec![
+        MoonAxis { p: -6, v: 0 },
+        MoonAxis { p: 10, v: 0 },
+        MoonAxis { p: 13, v: 0 },
+        MoonAxis { p: 4, v: 0 },
+    ];
+    // Example
+    // <x=-1, y=0, z=2>
+    // <x=2, y=-10, z=-7>
+    // <x=4, y=-8, z=8>
+    // <x=3, y=5, z=-1>
+    // let mut x_axis = vec![
+    //     MoonAxis { p: -1, v: 0 },
+    //     MoonAxis { p: 2, v: 0 },
+    //     MoonAxis { p: 4, v: 0 },
+    //     MoonAxis { p: 3, v: 0 },
+    // ];
+    // let mut y_axis = vec![
+    //     MoonAxis { p: 0, v: 0 },
+    //     MoonAxis { p: -10, v: 0 },
+    //     MoonAxis { p: -8, v: 0 },
+    //     MoonAxis { p: 5, v: 0 },
+    // ];
+    // let mut z_axis = vec![
+    //     MoonAxis { p: 2, v: 0 },
+    //     MoonAxis { p: -7, v: 0 },
+    //     MoonAxis { p: 8, v: 0 },
+    //     MoonAxis { p: -1, v: 0 },
+    // ];
     let mut pairs = Vec::new();
-    for idx1 in 0..moons.len() {
-        for idx2 in 0..moons.len() {
+    for idx1 in 0..x_axis.len() {
+        for idx2 in 0..x_axis.len() {
             if idx1 < idx2 {
                 pairs.push((idx1, idx2));
             }
         }
     }
 
-    for _ in 0..1000 {
-        for (idx1, idx2) in pairs.iter() {
-            apply_gravity(&mut moons, *idx1, *idx2);
-        }
-        for moon in moons.iter_mut() {
-            moon.apply_velocity();
-        }
-    }
+    let x_period = process_axis(&mut x_axis, &pairs);
+    let y_period = process_axis(&mut y_axis, &pairs);
+    let z_period = process_axis(&mut z_axis, &pairs);
 
-    let total: isize = moons.iter().map(|m| m.get_total_energy()).sum();
-    println!("result: {}", total);
+    println!("result: {}", lcm(lcm(x_period, y_period), z_period));
 }
