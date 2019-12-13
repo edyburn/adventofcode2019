@@ -38,7 +38,17 @@ fn main() {
     loop {
         match program.execute_instruction() {
             InstructionResult::None => continue,
-            InstructionResult::Halt => break,
+            InstructionResult::Halt => {
+                // I got tired of trying to play perfectly, and don't feel like
+                // writing code to play it, so just restart the program (but
+                // preserve the state) if the ball goes out of bounds...
+                if score != 0 {
+                    break;
+                }
+                println!("extra life!");
+                program.pointer = 0;
+                program.halted = false;
+            }
             InstructionResult::InputBlocked => {
                 /*
                 If the joystick is in the neutral position, provide 0.
