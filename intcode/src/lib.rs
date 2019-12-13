@@ -1,9 +1,9 @@
 pub struct Program {
-    memory: Vec<isize>,
-    pointer: usize,
-    relative_base: isize,
+    pub memory: Vec<isize>,
+    pub pointer: usize,
+    pub relative_base: isize,
     pub input: Vec<isize>,
-    halted: bool,
+    pub halted: bool,
 }
 
 pub enum InstructionResult {
