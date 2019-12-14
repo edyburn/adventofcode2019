@@ -56,7 +56,13 @@ fn main() {
     needed_counts.insert("FUEL".to_owned(), 1);
     loop {
         match needed_ids.pop() {
-            None => break, // nothing else needed, so we're done
+            None => {
+                if *total.get("ORE").unwrap() >= 1_000_000_000_000 {
+                    break;
+                }
+                needed_ids.push("FUEL");
+                needed_counts.insert("FUEL".to_owned(), 1);
+            }
             Some(need_id) => {
                 let need_count = needed_counts.remove(need_id).unwrap();
                 let e = used.entry(need_id).or_default();
@@ -97,5 +103,6 @@ fn main() {
             }
         }
     }
-    println!("result: {}", total.get("ORE").unwrap());
+    println!("fuel: {}", total.get("FUEL").unwrap() - 1);
+    println!("ore: {}", total.get("ORE").unwrap());
 }
