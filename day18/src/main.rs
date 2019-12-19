@@ -35,10 +35,42 @@ fn adjacent_coords(maze: &[Vec<char>], coords: (usize, usize)) -> Vec<(usize, us
     adjacent
 }
 
-fn search(maze: &[Vec<char>], initial_state: State, goal: usize) -> usize {
+fn search(maze: &[Vec<char>], initial_state: State) -> usize {
     let mut queue = VecDeque::new();
     queue.push_back((initial_state.clone(), 0));
     let mut discovered = HashSet::new();
+    discovered.insert(initial_state.clone());
+    let mut sector_keys = HashSet::new();
+    // find all keys in the sector
+    while let Some((s, _)) = queue.pop_front() {
+        let (x, y) = s.coords;
+        let c = maze[y][x];
+        if c == '#' {
+            // hit a wall
+            continue;
+        }
+        let mut keys = s.keys.clone();
+        if c.is_ascii_lowercase() && !s.keys.contains(&c) {
+            keys.push(c);
+            keys.sort();
+            sector_keys.insert(c);
+        };
+        for (x, y) in adjacent_coords(maze, s.coords) {
+            let new_state = State {
+                coords: (x, y),
+                keys: keys.clone(),
+            };
+            if discovered.contains(&new_state) {
+                continue;
+            }
+            discovered.insert(new_state.clone());
+            queue.push_back((new_state, 0));
+        }
+    }
+    // find the shortest path
+    queue.clear();
+    queue.push_back((initial_state.clone(), 0));
+    discovered.clear();
     discovered.insert(initial_state);
     let mut min = usize::max_value();
     while let Some((s, steps)) = queue.pop_front() {
@@ -47,7 +79,11 @@ fn search(maze: &[Vec<char>], initial_state: State, goal: usize) -> usize {
         }
         let (x, y) = s.coords;
         let c = maze[y][x];
-        if c == '#' || (c.is_ascii_uppercase() && !s.keys.contains(&c.to_ascii_lowercase())) {
+        if c == '#'
+            || (c.is_ascii_uppercase()
+                && sector_keys.contains(&c.to_ascii_lowercase())
+                && !s.keys.contains(&c.to_ascii_lowercase()))
+        {
             // hit a wall or a door and don't have the key
             continue;
         }
@@ -55,7 +91,7 @@ fn search(maze: &[Vec<char>], initial_state: State, goal: usize) -> usize {
         if c.is_ascii_lowercase() && !s.keys.contains(&c) {
             keys.push(c);
             keys.sort();
-            if keys.len() == goal {
+            if keys.len() == sector_keys.len() {
                 min = steps;
                 continue;
             }
@@ -76,22 +112,7 @@ fn search(maze: &[Vec<char>], initial_state: State, goal: usize) -> usize {
 }
 
 fn main() {
-    // let input = "########################
-    // #f.D.E.e.C.b.A.@.a.B.c.#
-    // ######################.#
-    // #d.....................#
-    // ########################";
-    // let input = "#################
-    // #i.G..c...e..H.p#
-    // ########.########
-    // #j.A..b...f..D.o#
-    // ########@########
-    // #k.E..a...g..B.n#
-    // ########.########
-    // #l.F..d...h..C.m#
-    // #################";
     let input = include_str!("../input.txt").trim();
-    let key_count = input.chars().filter(|c| c.is_ascii_lowercase()).count();
     let mut maze: Vec<Vec<char>> = input.split('\n').map(|l| l.chars().collect()).collect();
     let y_size = maze.len();
     let x_size = maze[0].len();
@@ -99,6 +120,18 @@ fn main() {
     // open passages (.)
     // stone walls (#)
     // keys (lowercase letters) and doors (uppercase letters)
+
+    // split into sections (there is probably a better way to do this...)
+    let (ent_x, ent_y) = find_entrance(&maze);
+    maze[ent_y - 1][ent_x - 1] = '@';
+    maze[ent_y - 1][ent_x] = '#';
+    maze[ent_y - 1][ent_x + 1] = '@';
+    maze[ent_y][ent_x - 1] = '#';
+    maze[ent_y][ent_x] = '#';
+    maze[ent_y][ent_x + 1] = '#';
+    maze[ent_y + 1][ent_x - 1] = '@';
+    maze[ent_y + 1][ent_x] = '#';
+    maze[ent_y + 1][ent_x + 1] = '@';
 
     // fill in dead ends
     let mut dead_end = true;
@@ -122,12 +155,21 @@ fn main() {
             }
         }
     }
-
-    let initial_state = State {
-        coords: find_entrance(&maze),
-        keys: Vec::new(),
-    };
-    let result = search(&maze, initial_state, key_count);
+    let result: usize = vec![
+        (ent_x - 1, ent_y - 1),
+        (ent_x - 1, ent_y + 1),
+        (ent_x + 1, ent_y - 1),
+        (ent_x + 1, ent_y + 1),
+    ]
+    .into_iter()
+    .map(|coords| {
+        let initial_state = State {
+            coords,
+            keys: Vec::new(),
+        };
+        search(&maze, initial_state)
+    })
+    .sum();
 
     // How many steps is the shortest path that collects all of the keys?
     println!("result: {:?}", result);
